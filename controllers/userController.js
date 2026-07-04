@@ -72,6 +72,9 @@ export async function loginUser(req, res) {
 
     }
 
+
+    
+
     export function isAdmin(req){
         
         if(req.user == null){
@@ -81,6 +84,17 @@ export async function loginUser(req, res) {
             return false
         }
         return true
+    }
+
+    export async function getAllUsers(req,res){
+        try{
+            if(isAdmin){
+                const users = await User.find()
+                res.json(users)
+            }
+        }catch(err){
+            res.json({message : "Failed to load users!", error : err.message})
+        }
     }
 
 

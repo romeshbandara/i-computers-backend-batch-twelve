@@ -20,6 +20,7 @@ export default function authenticateUser(req,res,next){
                     
                 }else{
 
+                    
                     req.user = decoded
                 
                     next()

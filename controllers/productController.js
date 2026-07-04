@@ -20,12 +20,14 @@ export async function createProduct(req,res){
 
     }
     catch(err){
-        res.status(500).json({ message: "Internal Server Error" })
+        res.status(500).json({ message: "Internal Server Error", error:err.message })
     }
 
 }
 
 export async function getAllProducts(req,res){
+
+    console.log("fetching all products")
 
     try{
         
