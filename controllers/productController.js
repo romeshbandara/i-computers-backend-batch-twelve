@@ -1,17 +1,17 @@
 import Product from "../models/product.js"
 import { isAdmin } from "../controllers/userController.js"
 
-export async function createProduct(req,res){
+export async function createProduct(req, res) {
 
-    try{
+    try {
 
-        if(isAdmin(req)){
-            
+        if (isAdmin(req)) {
+
             const product = new Product(req.body)
             await product.save()
-            res.json({message: "Product added successfully!"})
+            res.json({ message: "Product added successfully!" })
 
-        }else{
+        } else {
             res.status(403).json({ message: "Only admins can add products!" })
             return
         }
@@ -19,68 +19,68 @@ export async function createProduct(req,res){
 
 
     }
-    catch(err){
-        res.status(500).json({ message: "Internal Server Error", error:err.message })
+    catch (err) {
+        res.status(500).json({ message: "Internal Server Error", error: err.message })
     }
 
 }
 
-export async function getAllProducts(req,res){
+export async function getAllProducts(req, res) {
 
     console.log("fetching all products")
 
-    try{
-        
-        if(isAdmin(req)){
+    try {
+
+        if (isAdmin(req)) {
             const products = await Product.find()
             res.json(products)
-        }else{
-            const products = await Product.find({isAvailable: true})
+        } else {
+            const products = await Product.find({ isAvailable: true })
             res.json(products)
         }
 
 
-    }catch(err){
+    } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
     }
 
 }
 
-export async function deleteProduct(req,res){
+export async function deleteProduct(req, res) {
 
-        const productId = req.params.productId
+    const productId = req.params.productId
 
-    try{
+    try {
 
-        if(isAdmin(req)){
+        if (isAdmin(req)) {
             const product = await Product.findOne({ productId: productId })
-            if(product == null){
+            if (product == null) {
                 res.status(404).json({ message: "Product not found!" })
                 return
             }
             await Product.findOneAndDelete({ productId: productId })
             res.json({ message: "Product deleted successfully!" })
-        }else{
+        } else {
             res.status(403).json({ message: "Only admins can delete products!" })
             return
         }
 
-    }catch(err){
+    } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
     }
 
 }
 
-export async function updateProduct(req,res){
+export async function updateProduct(req, res) {
 
     const productId = req.params.productId
 
-    try{
+    try {
 
-        if(isAdmin(req)){
+        if (isAdmin(req)) {
 
             const product = await Product.findOne({ productId: productId })
-            if(product == null){
+            if (product == null) {
                 res.status(404).json({ message: "Product not found!" })
                 return
             }
@@ -88,54 +88,54 @@ export async function updateProduct(req,res){
             await Product.findOneAndUpdate({ productId: productId }, req.body)
             res.json({ message: "Product updated successfully!" })
 
-        }else{
+        } else {
             res.status(403).json({ message: "Only admins can update products!" })
             return
         }
 
-    }catch(err){
+    } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
     }
 
 
 }
 
-export async function getProductById(req,res){
+export async function getProductById(req, res) {
 
     const productId = req.params.productId
 
-    try{
-
-        
-
-            const product = await Product.findOne({ productId: productId })
-
-            if(product == null){
-                res.status(404).json({ message: "product not exists!" })
-                return
-            }else{
+    try {
 
 
-                if(product.isAvailable){
+
+        const product = await Product.findOne({ productId: productId })
+
+        if (product == null) {
+            res.status(404).json({ message: "product not exists!" })
+            return
+        } else {
+
+
+            if (product.isAvailable) {
 
                 res.json(product)
 
-            }else{
+            } else {
 
-                if(isAdmin(req)){
+                if (isAdmin(req)) {
                     res.json(product)
-                }else{
+                } else {
                     res.status(404).json({ message: "Product not found!" })
                 }
 
 
             }
 
-            }
+        }
 
-            
 
-    }catch(err){
+
+    } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
     }
 

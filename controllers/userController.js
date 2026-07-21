@@ -88,7 +88,7 @@ export async function loginUser(req, res) {
 
     export async function getAllUsers(req,res){
         try{
-            if(isAdmin){
+            if(isAdmin(req)){
                 const users = await User.find()
                 res.json(users)
             }
