@@ -27,7 +27,7 @@ export async function createProduct(req, res) {
 
 export async function getAllProducts(req, res) {
 
-    console.log("fetching all products")
+    
 
     try {
 
