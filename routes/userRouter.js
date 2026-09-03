@@ -1,5 +1,5 @@
 import express from "express";
-import { createUser, getAllUsers } from "../controllers/userController.js";
+import { createUser, getAllUsers, getCurrentUser, updateUserRole, updateUserStatus } from "../controllers/userController.js";
 import { loginUser } from "../controllers/userController.js";
 
 
@@ -9,6 +9,14 @@ userRouter.post("/", createUser)
 
 userRouter.post("/login", loginUser)
 
-userRouter.get("/", getAllUsers)
+userRouter.get("/:pageSize/:pageNumber", getAllUsers)
+
+userRouter.put("/status",updateUserStatus)
+
+userRouter.put("/role", updateUserRole)
+
+userRouter.get("/me", getCurrentUser)
+
+
 
 export default userRouter

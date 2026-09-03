@@ -112,31 +112,40 @@ export async function getOrders(req, res) {
             res.status(401).json({ message: "You need to login to view your orders" })
         }
 
-        const pageSizeInString = req.params.pageSize || "10" //"3"
+        const pageSizeInString = req.params.pageSize || "10" //string "3"
 
-        const pageNumberInString = req.params.pageNumber || "1" //"3"
+        const pageNumberInString = req.params.pageNumber || "1" //string "3"
 
-        const pageSize = parseInt(pageSizeInString) //3
+        const pageSize = parseInt(pageSizeInString) //int 3
 
-        const pageNumber = parseInt(pageNumberInString) //3
+        const pageNumber = parseInt(pageNumberInString) //int 3
 
         if (isAdmin(req)) {
+
+            
 
             const totalOrderCount = await Order.countDocuments()
 
             const totalPages = Math.ceil(totalOrderCount / pageSize)
+
+            if (pageNumber < 1) {
+                return res.status(400).json({ message: "Page number cannot be less than 1" })
+            }
 
             const pagesNeededToBeSkipped = pageNumber - 1
 
             const itemsNeededToBeSkipped = pagesNeededToBeSkipped * pageSize
 
             const orders = await Order.find().sort({ date: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
-            return res.json({ orders: orders, totalPages: totalPages, totalCount: totalOrderCount })
+            return res.json({ orders: orders, totalPages: totalPages, totalCount: totalOrderCount, currentPage: pageNumber })
         } else {
 
-            const totalOrderCount = await Order.countDocuments()
-
+            const totalOrderCount = await Order.countDocuments({email: req.user.email})
             const totalPages = Math.ceil(totalOrderCount / pageSize)
+
+            if (pageNumber < 1) {
+                return res.status(400).json({ message: "Page number cannot be less than 1" })
+            }
 
             const pagesNeededToBeSkipped = pageNumber - 1
 
@@ -148,6 +157,25 @@ export async function getOrders(req, res) {
         }
 
     } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+export async function updateOrderStatus(req, res) {
+    if (!isAdmin(req)) {
+        return res.status(403).json({ message: "You are not authorized to update order status" })
+    }
+    const orderId = req.params.orderId
+    const newStatus = req.params.status
+
+    try {
+        const order = await Order.findOne({ orderId: orderId })
+        if (order == null) {
+            return res.status(404).json({ message: "Order not found" })
+        }
+        await Order.updateOne({ orderId: orderId }, { status: newStatus })
+        res.json({ message: "Order status updated" })
+    } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
