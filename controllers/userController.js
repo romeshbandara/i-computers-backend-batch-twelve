@@ -199,5 +199,51 @@ export async function getCurrentUser(req, res) {
     } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
     }
+    
 }
 
+export async function updateUserProfile(req, res) {
+    if(req.user == null) {
+        res.status(401).json({ message: "You are not logged in" })
+        return
+    }
+    try {
+        const user = await User.findOne({ email: req.user.email })
+        if(user == null) {
+            res.status(404).json({ message: "User not found" })
+            return
+        }
+        await user.updateOne( { 
+            firstName: req.body.firstName, 
+            lastName: req.body.lastName,
+            image : req.body.image 
+        })
+        res.json({ message: "User profile updated successfully" })
+    } catch (err) {
+        res.status(500).json({ message: "Internal Server Error" ,error : err})
+        console.log(err)
+    }
+}
+
+export async function updateUserPassword(req, res) {
+    if(req.user == null) {
+        res.status(401).json({ message: "You are not logged in" })
+        return
+    }
+    try {
+        const user = await User.findOne({ email: req.user.email })
+        if(user == null) {
+            res.status(404).json({ message: "User not found" })
+            return
+        }
+
+        const hashedPassword = bcrypt.hashSync(req.body.password, 10)
+
+        await user.updateOne({ 
+            password: hashedPassword
+        })
+        res.json({ message: "User profile updated successfully" })
+    } catch (err) {
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
