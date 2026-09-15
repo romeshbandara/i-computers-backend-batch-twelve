@@ -2,6 +2,7 @@ import User from "../models/user.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from 'dotenv'
+import axios from "axios";
 
 dotenv.config()
 
@@ -41,7 +42,9 @@ export async function loginUser(req, res) {
             res.status(404).json({ message: "User not found" })
             return
         }
-
+        if (user.isBlocked) {
+            return res.status(401).json({ message: "User is Blocked" })
+        }
         const isPasswordMatching = bcrypt.compareSync(password, user.password)
 
         if (isPasswordMatching) {
@@ -60,7 +63,7 @@ export async function loginUser(req, res) {
 
             const token = jwt.sign(userInfo, process.env.JWT_SECRET)
 
-            res.json({ token: token, isAdmin: user.isAdmin })
+            res.json({ token: token, isAdmin: user.isAdmin, user : user })
 
         } else {
             res.status(401).json({ message: "Invalid password" })
@@ -199,51 +202,120 @@ export async function getCurrentUser(req, res) {
     } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
     }
-    
+
 }
 
 export async function updateUserProfile(req, res) {
-    if(req.user == null) {
+    if (req.user == null) {
         res.status(401).json({ message: "You are not logged in" })
         return
     }
     try {
         const user = await User.findOne({ email: req.user.email })
-        if(user == null) {
+        if (user == null) {
             res.status(404).json({ message: "User not found" })
             return
         }
-        await user.updateOne( { 
-            firstName: req.body.firstName, 
+        await user.updateOne({
+            firstName: req.body.firstName,
             lastName: req.body.lastName,
-            image : req.body.image 
+            image: req.body.image
         })
         res.json({ message: "User profile updated successfully" })
     } catch (err) {
-        res.status(500).json({ message: "Internal Server Error" ,error : err})
+        res.status(500).json({ message: "Internal Server Error", error: err })
         console.log(err)
     }
 }
 
 export async function updateUserPassword(req, res) {
-    if(req.user == null) {
+    if (req.user == null) {
         res.status(401).json({ message: "You are not logged in" })
         return
     }
     try {
         const user = await User.findOne({ email: req.user.email })
-        if(user == null) {
+        if (user == null) {
             res.status(404).json({ message: "User not found" })
             return
         }
 
         const hashedPassword = bcrypt.hashSync(req.body.password, 10)
 
-        await user.updateOne({ 
+        await user.updateOne({
             password: hashedPassword
         })
         res.json({ message: "User profile updated successfully" })
     } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+export async function googleLogin(req, res) {
+    const accessToken = req.body.accessToken
+
+    try {
+        const googleResponse = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: {
+                Authorization: "Bearer " + accessToken
+            }
+
+
+        })
+
+        
+
+        const user = await User.findOne({ email: googleResponse.data.email })
+
+        if (user == null) {
+            const randomPassword = Math.random().toString(36).slice(-8)
+            const hashedPassword = bcrypt.hashSync(randomPassword, 10)
+            const newUser = new User({
+                email: googleResponse.data.email,
+                firstName: googleResponse.data.given_name,
+                lastName: googleResponse.data.family_name,
+                image: googleResponse.data.picture,
+                password: hashedPassword,
+                isEmailVerified: googleResponse.data.email_verified
+            })
+
+            const savedUser = await newUser.save()
+
+            const userInfo = {
+
+            email: savedUser.email,
+            firstName: savedUser.firstName,
+            lastName: savedUser.lastName,
+            image: savedUser.image,
+            emailVerified: savedUser.isEmailVerified,
+            isAdmin: savedUser.isAdmin,
+            isBlocked: savedUser.isBlocked
+        }
+
+        const token = jwt.sign(userInfo, process.env.JWT_SECRET)
+
+        res.json({ token: token, isAdmin: savedUser.isAdmin, user : savedUser })
+
+        }
+        if (user.isBlocked) {
+            return res.status(401).json({ message: "User is blocked" })
+        }
+        const userInfo = {
+
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            image: user.image,
+            emailVerified: user.isEmailVerified,
+            isAdmin: user.isAdmin,
+            isBlocked: user.isBlocked
+        }
+
+        const token = jwt.sign(userInfo, process.env.JWT_SECRET)
+
+        res.json({ token: token, isAdmin: user.isAdmin, user : user })
+    } catch (err) {
+        
+        res.status(500).json({ message: "Internal server error", error: err.message })
     }
 }
