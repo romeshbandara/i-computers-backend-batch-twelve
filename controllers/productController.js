@@ -155,13 +155,16 @@ export async function searchProducts(req, res) {
             word.split("").join("\\s*")
         );
 
+        
+
         // 3. Match documents where EVERY word exists in at least one of the fields
         const products = await Product.find({
             $and: wordRegexes.map(regex => ({
                 $or: [
                     { name: { $regex: regex, $options: "i" } },
                     { description: { $regex: regex, $options: "i" } },
-                    { altNames: { $regex: regex, $options: "i" } }
+                    { altNames: { $regex: regex, $options: "i" } },
+                    { category: { $regex: regex, $options: "i" } }
                 ]
             }))
         });
@@ -169,5 +172,35 @@ export async function searchProducts(req, res) {
         res.json(products);
     } catch (err) {
         res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+
+export async function filterProducts(req,res){
+    try {
+       const rawQuery = req.params.category;
+
+        // 1. Split search query into individual words (e.g. ["gaming", "motherboard"])
+        const words = rawQuery.trim().split(/\s+/);
+
+        // 2. Build a flexible regex for each word to allow optional internal spaces (e.g. "a\\s*s\\s*u\\s*s")
+        const wordRegexes = words.map(word =>
+            word.split("").join("\\s*")
+        );
+
+        
+
+        // 3. Match documents where EVERY word exists in at least one of the fields
+        const products = await Product.find({
+            $and: wordRegexes.map(regex => ({
+                $or: [
+                    
+                    { category: { $regex: regex, $options: "i" } }
+                ]
+            }))
+        });
+        res.json(products)
+    } catch (err) {
+        return res.status(500).json({message:"Internal server error",error:err.message})
     }
 }

@@ -1,0 +1,21 @@
+import mongoose, { mongo } from "mongoose";
+
+const otpSchema = new mongoose.Schema({
+    email:{
+        type: String,
+        required:true,
+        unique:true
+    },
+    otp:{
+        type:String,
+        required:true
+    },
+    time:{
+        type:Date,
+        default:Date.now
+    }
+})
+
+const OTP = mongoose.model("OTP",otpSchema)
+
+export default OTP;

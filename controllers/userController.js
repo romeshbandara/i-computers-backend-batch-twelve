@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from 'dotenv'
 import axios from "axios";
+import OTP from "../models/otp.js";
+import transporter from "../utils/emailTransporter.js";
 
 dotenv.config()
 
@@ -63,7 +65,7 @@ export async function loginUser(req, res) {
 
             const token = jwt.sign(userInfo, process.env.JWT_SECRET)
 
-            res.json({ token: token, isAdmin: user.isAdmin, user : user })
+            res.json({ token: token, isAdmin: user.isAdmin, user: user })
 
         } else {
             res.status(401).json({ message: "Invalid password" })
@@ -263,7 +265,7 @@ export async function googleLogin(req, res) {
 
         })
 
-        
+
 
         const user = await User.findOne({ email: googleResponse.data.email })
 
@@ -283,18 +285,18 @@ export async function googleLogin(req, res) {
 
             const userInfo = {
 
-            email: savedUser.email,
-            firstName: savedUser.firstName,
-            lastName: savedUser.lastName,
-            image: savedUser.image,
-            emailVerified: savedUser.isEmailVerified,
-            isAdmin: savedUser.isAdmin,
-            isBlocked: savedUser.isBlocked
-        }
+                email: savedUser.email,
+                firstName: savedUser.firstName,
+                lastName: savedUser.lastName,
+                image: savedUser.image,
+                emailVerified: savedUser.isEmailVerified,
+                isAdmin: savedUser.isAdmin,
+                isBlocked: savedUser.isBlocked
+            }
 
-        const token = jwt.sign(userInfo, process.env.JWT_SECRET)
+            const token = jwt.sign(userInfo, process.env.JWT_SECRET)
 
-        res.json({ token: token, isAdmin: savedUser.isAdmin, user : savedUser })
+            res.json({ token: token, isAdmin: savedUser.isAdmin, user: savedUser })
 
         }
         if (user.isBlocked) {
@@ -313,9 +315,98 @@ export async function googleLogin(req, res) {
 
         const token = jwt.sign(userInfo, process.env.JWT_SECRET)
 
-        res.json({ token: token, isAdmin: user.isAdmin, user : user })
+        res.json({ token: token, isAdmin: user.isAdmin, user: user })
     } catch (err) {
-        
+
         res.status(500).json({ message: "Internal server error", error: err.message })
+    }
+}
+
+export async function sendOTP(req, res) {
+    try {
+        const email = req.body.email
+
+        const user = await User.findOne({ email: email })
+
+        if (user == null) {
+            return res.status(404).json({ message: "User not founded!" })
+        }
+        if (user.isBlocked) {
+            return res.status(401).json({ message: "User is blocked" })
+        }
+
+        await OTP.findOneAndDelete({ email: email })
+
+        //100000 - 999999
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString()
+
+        const hashedOtp = bcrypt.hashSync(otp, 10)
+
+        const newOTP = new OTP({
+            email: email,
+            otp: hashedOtp
+        })
+
+        await newOTP.save()
+
+        const message = {
+            from: process.env.EMAIL,
+            to: email,
+            subject: "Your OTP for icomputers",
+            text: "Your otp is " + otp + ". It is valid for 5 miniutes"
+        }
+
+        transporter.sendMail(message, (error, info) => {
+            if (error) {
+                console.log(error)
+                return res.status(500).json({ message: "Failed to send otp" })
+            } else {
+                
+                return res.json({ message: "OTP sent successfully" })
+            }
+        })
+
+
+
+
+    } catch (err) {
+        console.log(err)
+        return res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+export async function resetPassword(req, res) {
+    const email = req.body.email
+    const newPassword = req.body.newPassword
+    const otp = req.body.otp
+
+    try {
+        const otpRecord = await OTP.findOne({ email: email })
+
+        if (otpRecord == null) {
+            return res.status(404).json({ message: "Otp not found" })
+        }
+
+        const isOTPValid = bcrypt.compareSync(otp, otpRecord.otp)
+        const currentTime = new Date()
+        const otpCreationTime = new Date(otpRecord.time)
+        const timeDifferenceMiniutes = (currentTime - otpCreationTime) / (1000 * 60)
+
+        if (!isOTPValid){
+            return res.status(403).json({message:"Invalid otp"})
+        }
+        if(timeDifferenceMiniutes > 5){
+            return res.status(400).json({message:"Otp has expired"})
+        }
+        const hashedPassword = bcrypt.hashSync(newPassword,10)
+
+        await User.findOneAndUpdate({email:email},{password:hashedPassword})
+
+        await OTP.findOneAndDelete({email:email})
+
+        res.json({message:"password reset successfully!"})
+    } catch (err) {
+        return res.status(500).json({ message: "Internal server error" })
     }
 }

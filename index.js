@@ -27,11 +27,11 @@ app.use( express.json() )
 
 app.use(authenticateUser)
 
-app.use("/users", userRouter)
+app.use("/api/users", userRouter)
 
-app.use("/products", productRouter)
+app.use("/api/products", productRouter)
 
-app.use("/orders", orderRouter)
+app.use("/api/orders", orderRouter)
  
 app.listen( 3000 ,
     ()=>{
