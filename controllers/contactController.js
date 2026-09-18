@@ -67,7 +67,7 @@ export async function getMessage(req, res) {
 
             const itemsNeededToBeSkipped = pagesNeededToBeSkipped * pageSize
 
-            const messages = await Contact.find().sort({ date: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
+            const messages = await Contact.find().sort({ date: -1, _id:-1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
             return res.json({ messages: messages, totalPages: totalPages, totalCount: totalMessageCount, currentPage: pageNumber })
         } else {
 
