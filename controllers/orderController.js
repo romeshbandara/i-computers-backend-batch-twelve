@@ -9,6 +9,10 @@ export async function createOrder(req, res) {
             res.status(401).json({ message: "You need to login to create an order" })
             return
         }
+        if(req.user.isBlocked){
+            res.status(401).json({message:"User is blocked"})
+            return
+        }
 
         const orderData = {
             orderId: "ORD000001",
