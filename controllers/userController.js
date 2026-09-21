@@ -92,6 +92,8 @@ export function isAdmin(req) {
     return true
 }
 
+
+
 export async function getAllUsers(req, res) {
 
     if (!isAdmin(req)) {
