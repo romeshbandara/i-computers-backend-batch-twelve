@@ -25,6 +25,22 @@ const reviewSchema = new mongoose.Schema({
     image:{
         type:[String],
         default:[]
+    },
+    userImage:{
+        type:String,
+        required:true
+    },
+    firstName:{
+        type:String,
+        required:true
+    },
+    lastName:{
+        type:String,
+        required:true
+    },
+    rate:{
+        type:Number,
+        required:true
     }
 
 })
