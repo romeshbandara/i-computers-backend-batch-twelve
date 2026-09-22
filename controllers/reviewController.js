@@ -18,7 +18,11 @@ export async function createReview(req, res) {
             productId: req.body.productId,
             email: email,
             message: req.body.message,
-            image: req.body.image
+            image: req.body.image,
+            userImage:req.body.userImage,
+            firstName:req.body.firstName,
+            lastName:req.body.lastName,
+            rate:req.body.rate
 
         })
 
