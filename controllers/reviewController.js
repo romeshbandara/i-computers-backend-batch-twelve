@@ -31,7 +31,7 @@ export async function createReview(req, res) {
 
 export async function getReview(req, res) {
     try {
-        const reviews = await Review.find({ productId: req.body.productId })
+        const reviews = await Review.find({ productId: req.params.productId })
         res.json(reviews)
     } catch (err) {
         res.status(500).json({ message: "Internal server error", error: err.message })
