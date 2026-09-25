@@ -138,7 +138,9 @@ export async function getOrders(req, res) {
                     { lastName: searchRegex },
                     { phone: searchRegex },
                     { city: searchRegex },
-                    { status: searchRegex }
+                    { status: searchRegex },
+                    { "items.product.name": searchRegex },
+                    { "items.product.productId": searchRegex }
                 ]
             }
         }

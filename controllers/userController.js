@@ -116,13 +116,27 @@ export async function getAllUsers(req, res) {
         if (search) {
             const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             const searchRegex = new RegExp(escapedSearch, "i")
-            filter = {
-                $or: [
-                    { email: searchRegex },
-                    { firstName: searchRegex },
-                    { lastName: searchRegex }
-                ]
+            const orConditions = [
+                { email: searchRegex },
+                { firstName: searchRegex },
+                { lastName: searchRegex }
+            ]
+            if (/^admin/i.test(search)) {
+                orConditions.push({ isAdmin: true })
+            } else if (/^user/i.test(search)) {
+                orConditions.push({ isAdmin: false })
             }
+            if (/^block/i.test(search)) {
+                orConditions.push({ isBlocked: true })
+            } else if (/^active/i.test(search)) {
+                orConditions.push({ isBlocked: false })
+            }
+            if (/^verif/i.test(search)) {
+                orConditions.push({ isEmailVerified: true })
+            } else if (/^unverif/i.test(search)) {
+                orConditions.push({ isEmailVerified: false })
+            }
+            filter = { $or: orConditions }
         }
 
         const totalUserCount = await User.countDocuments(filter)
