@@ -27,24 +27,40 @@ export async function createProduct(req, res) {
 }
 
 export async function getAllProducts(req, res) {
-
-
-
     try {
+        const search = req.query.search ? req.query.search.trim() : ""
 
-        if (isAdmin(req)) {
-            const products = await Product.find()
-            res.json(products)
-        } else {
-            const products = await Product.find({ isAvailable: true })
-            res.json(products)
+        let filter = {}
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const searchRegex = new RegExp(escapedSearch, "i")
+            filter = {
+                $or: [
+                    { productId: searchRegex },
+                    { name: searchRegex },
+                    { category: searchRegex },
+                    { brand: searchRegex },
+                    { model: searchRegex },
+                    { description: searchRegex },
+                    { altNames: searchRegex }
+                ]
+            }
         }
 
+        if (isAdmin(req)) {
+            const products = await Product.find(filter)
+            res.json(products)
+        } else {
+            const userFilter = search
+                ? { $and: [{ isAvailable: true }, filter] }
+                : { isAvailable: true }
+            const products = await Product.find(userFilter)
+            res.json(products)
+        }
 
     } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })
     }
-
 }
 
 export async function deleteProduct(req, res) {

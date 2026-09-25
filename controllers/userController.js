@@ -101,33 +101,52 @@ export async function getAllUsers(req, res) {
         return
     }
 
-    const pageSizeInString = req.params.pageSize || "10" //string "3"
+    const pageSizeInString = req.params.pageSize || "10"
+    const pageNumberInString = req.params.pageNumber || "1"
+    const pageSize = parseInt(pageSizeInString)
+    const pageNumber = parseInt(pageNumberInString)
+    const search = req.query.search ? req.query.search.trim() : ""
 
-    const pageNumberInString = req.params.pageNumber || "1" //string "3"
-
-    const pageSize = parseInt(pageSizeInString) //int 3
-
-    const pageNumber = parseInt(pageNumberInString) //int 3
+    if (pageNumber < 1) {
+        return res.status(400).json({ message: "Page number cannot be less than 1" })
+    }
 
     try {
-
-
-
-        const totalUserCount = await User.countDocuments()
-
-        const totalPages = Math.ceil(totalUserCount / pageSize)
-
-        if (pageNumber < 1) {
-            return res.status(400).json({ message: "Page number cannot be less than 1" })
+        let filter = {}
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const searchRegex = new RegExp(escapedSearch, "i")
+            const orConditions = [
+                { email: searchRegex },
+                { firstName: searchRegex },
+                { lastName: searchRegex }
+            ]
+            if (/^admin/i.test(search)) {
+                orConditions.push({ isAdmin: true })
+            } else if (/^user/i.test(search)) {
+                orConditions.push({ isAdmin: false })
+            }
+            if (/^block/i.test(search)) {
+                orConditions.push({ isBlocked: true })
+            } else if (/^active/i.test(search)) {
+                orConditions.push({ isBlocked: false })
+            }
+            if (/^verif/i.test(search)) {
+                orConditions.push({ isEmailVerified: true })
+            } else if (/^unverif/i.test(search)) {
+                orConditions.push({ isEmailVerified: false })
+            }
+            filter = { $or: orConditions }
         }
 
-        const pagesNeededToBeSkipped = pageNumber - 1
+        const totalUserCount = await User.countDocuments(filter)
+        const totalPages = Math.ceil(totalUserCount / pageSize) || 1
 
+        const pagesNeededToBeSkipped = pageNumber - 1
         const itemsNeededToBeSkipped = pagesNeededToBeSkipped * pageSize
 
-        const users = await User.find().skip(itemsNeededToBeSkipped).limit(pageSize)
+        const users = await User.find(filter).skip(itemsNeededToBeSkipped).limit(pageSize)
         return res.json({ users: users, totalPages: totalPages, totalCount: totalUserCount, currentPage: pageNumber })
-
 
     } catch (err) {
         res.status(500).json({ message: "Internal Server Error" })

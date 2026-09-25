@@ -113,51 +113,61 @@ export async function getOrders(req, res) {
     try {
 
         if (req.user == null) {
-            res.status(401).json({ message: "You need to login to view your orders" })
+            return res.status(401).json({ message: "You need to login to view your orders" })
         }
 
-        const pageSizeInString = req.params.pageSize || "10" //string "3"
+        const pageSizeInString = req.params.pageSize || "10"
+        const pageNumberInString = req.params.pageNumber || "1"
+        const pageSize = parseInt(pageSizeInString)
+        const pageNumber = parseInt(pageNumberInString)
+        const search = req.query.search ? req.query.search.trim() : ""
 
-        const pageNumberInString = req.params.pageNumber || "1" //string "3"
+        if (pageNumber < 1) {
+            return res.status(400).json({ message: "Page number cannot be less than 1" })
+        }
 
-        const pageSize = parseInt(pageSizeInString) //int 3
-
-        const pageNumber = parseInt(pageNumberInString) //int 3
+        let searchFilter = {}
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const searchRegex = new RegExp(escapedSearch, "i")
+            searchFilter = {
+                $or: [
+                    { orderId: searchRegex },
+                    { email: searchRegex },
+                    { firstName: searchRegex },
+                    { lastName: searchRegex },
+                    { phone: searchRegex },
+                    { city: searchRegex },
+                    { status: searchRegex },
+                    { "items.product.name": searchRegex },
+                    { "items.product.productId": searchRegex }
+                ]
+            }
+        }
 
         if (isAdmin(req)) {
-
-            
-
-            const totalOrderCount = await Order.countDocuments()
-
-            const totalPages = Math.ceil(totalOrderCount / pageSize)
-
-            if (pageNumber < 1) {
-                return res.status(400).json({ message: "Page number cannot be less than 1" })
-            }
+            const filter = search ? searchFilter : {}
+            const totalOrderCount = await Order.countDocuments(filter)
+            const totalPages = Math.ceil(totalOrderCount / pageSize) || 1
 
             const pagesNeededToBeSkipped = pageNumber - 1
-
             const itemsNeededToBeSkipped = pagesNeededToBeSkipped * pageSize
 
-            const orders = await Order.find().sort({ date: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
+            const orders = await Order.find(filter).sort({ date: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
             return res.json({ orders: orders, totalPages: totalPages, totalCount: totalOrderCount, currentPage: pageNumber })
         } else {
+            const filter = search
+                ? { $and: [{ email: req.user.email }, searchFilter] }
+                : { email: req.user.email }
 
-            const totalOrderCount = await Order.countDocuments({email: req.user.email})
-            const totalPages = Math.ceil(totalOrderCount / pageSize)
-
-            if (pageNumber < 1) {
-                return res.status(400).json({ message: "Page number cannot be less than 1" })
-            }
+            const totalOrderCount = await Order.countDocuments(filter)
+            const totalPages = Math.ceil(totalOrderCount / pageSize) || 1
 
             const pagesNeededToBeSkipped = pageNumber - 1
-
             const itemsNeededToBeSkipped = pagesNeededToBeSkipped * pageSize
 
-            const orders = await Order.find({ email: req.user.email }).sort({ date: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
-
-            return res.json({ orders: orders, totalPages: totalPages, totalCount: totalOrderCount })
+            const orders = await Order.find(filter).sort({ date: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
+            return res.json({ orders: orders, totalPages: totalPages, totalCount: totalOrderCount, currentPage: pageNumber })
         }
 
     } catch (error) {
