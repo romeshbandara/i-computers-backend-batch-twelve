@@ -40,51 +40,56 @@ export async function getMessage(req, res) {
     try {
 
         if (req.user == null) {
-            res.status(401).json({ message: "You need to login to view your orders" })
+            return res.status(401).json({ message: "You need to login to view your messages" })
         }
 
-        const pageSizeInString = req.params.pageSize || "10" //string "3"
+        const pageSizeInString = req.params.pageSize || "10"
+        const pageNumberInString = req.params.pageNumber || "1"
+        const pageSize = parseInt(pageSizeInString)
+        const pageNumber = parseInt(pageNumberInString)
+        const search = req.query.search ? req.query.search.trim() : ""
 
-        const pageNumberInString = req.params.pageNumber || "1" //string "3"
+        if (pageNumber < 1) {
+            return res.status(400).json({ message: "Page number cannot be less than 1" })
+        }
 
-        const pageSize = parseInt(pageSizeInString) //int 3
-
-        const pageNumber = parseInt(pageNumberInString) //int 3
+        let searchFilter = {}
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const searchRegex = new RegExp(escapedSearch, "i")
+            searchFilter = {
+                $or: [
+                    { name: searchRegex },
+                    { email: searchRegex },
+                    { subject: searchRegex },
+                    { message: searchRegex }
+                ]
+            }
+        }
 
         if (isAdmin(req)) {
-
-
-
-            const totalMessageCount = await Contact.countDocuments()
-
-            const totalPages = Math.ceil(totalMessageCount / pageSize)
-
-            if (pageNumber < 1) {
-                return res.status(400).json({ message: "Page number cannot be less than 1" })
-            }
+            const filter = search ? searchFilter : {}
+            const totalMessageCount = await Contact.countDocuments(filter)
+            const totalPages = Math.ceil(totalMessageCount / pageSize) || 1
 
             const pagesNeededToBeSkipped = pageNumber - 1
-
             const itemsNeededToBeSkipped = pagesNeededToBeSkipped * pageSize
 
-            const messages = await Contact.find().sort({ date: -1, _id:-1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
+            const messages = await Contact.find(filter).sort({ time: -1, date: -1, _id: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
             return res.json({ messages: messages, totalPages: totalPages, totalCount: totalMessageCount, currentPage: pageNumber })
         } else {
+            const filter = search
+                ? { $and: [{ email: req.user.email }, searchFilter] }
+                : { email: req.user.email }
 
-            const totalMessageCount = await Contact.countDocuments({ email: req.user.email })
-            const totalPages = Math.ceil(totalMessageCount / pageSize)
-
-            if (pageNumber < 1) {
-                return res.status(400).json({ message: "Page number cannot be less than 1" })
-            }
+            const totalMessageCount = await Contact.countDocuments(filter)
+            const totalPages = Math.ceil(totalMessageCount / pageSize) || 1
 
             const pagesNeededToBeSkipped = pageNumber - 1
-
             const itemsNeededToBeSkipped = pagesNeededToBeSkipped * pageSize
 
-            const messages = await Contact.find({ email: req.user.email }).sort({ date: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
-
-            return res.json({ messages: messages, totalPages: totalPages, totalCount: totalMessageCount })
+            const messages = await Contact.find(filter).sort({ time: -1, date: -1, _id: -1 }).skip(itemsNeededToBeSkipped).limit(pageSize)
+            return res.json({ messages: messages, totalPages: totalPages, totalCount: totalMessageCount, currentPage: pageNumber })
         }
 
     } catch (error) {
